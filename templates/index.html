@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>News Sentiment Analyzer</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 20px; 
+            background-color: #f5f5f5;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .fetch-button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .fetch-button:hover {
+            background-color: #2980b9;
+        }
+        .article { 
+            border: 1px solid #ddd; 
+            padding: 20px; 
+            margin: 15px 0; 
+            border-radius: 8px;
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            gap: 20px;
+        }
+        .article-image {
+            flex: 0 0 200px;
+        }
+        .article-image img {
+            width: 200px;
+            height: 150px;
+            object-fit: cover;
+            border-radius: 4px;
+        }
+        .article-content {
+            flex: 1;
+        }
+        .analyze-button {
+            background-color: #2ecc71;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .analyze-button:hover {
+            background-color: #27ae60;
+        }
+        .sentiment-result {
+            margin-top: 10px;
+            padding: 8px 16px;
+            border-radius: 4px;
+            display: none;
+            font-weight: bold;
+        }
+        .sentiment-positive {
+            background-color: #e8f5e9;
+            color: #4CAF50;
+        }
+        .sentiment-negative {
+            background-color: #ffebee;
+            color: #f44336;
+        }
+        h2 {
+            margin-top: 0;
+            color: #2c3e50;
+            font-size: 1.4em;
+        }
+        .article p {
+            color: #666;
+            line-height: 1.6;
+            margin: 10px 0;
+        }
+        .article a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-block;
+            margin-top: 10px;
+        }
+        .article a:hover {
+            text-decoration: underline;
+        }
+        .article small {
+            color: #999;
+            display: block;
+            margin-top: 10px;
+        }
+        #loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 1.2em;
+            color: #666;
+        }
+        .error-message {
+            color: #f44336;
+            text-align: center;
+            padding: 20px;
+            background-color: #ffebee;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        @media (max-width: 768px) {
+            .article {
+                flex-direction: column;
+            }
+            .article-image {
+                flex: 0 0 auto;
+            }
+            .article-image img {
+                width: 100%;
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>News Sentiment Analyzer</h1>
+    <div class="controls">
+        <button class="fetch-button" onclick="fetchNews()">Fetch New News</button>
+    </div>
+    <div id="news-container">
+        <div id="loading">Loading news...</div>
+    </div>
+
+    <script>
+        async function analyzeArticle(button, text) {
+            try {
+                button.disabled = true;
+                button.textContent = 'Analyzing...';
+                
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ text: text })
+                });
+                
+                const data = await response.json();
+                
+                const resultDiv = button.nextElementSibling;
+                resultDiv.style.display = 'inline-block';
+                resultDiv.textContent = `Sentiment: ${data.sentiment}`;
+                resultDiv.className = `sentiment-result sentiment-${data.sentiment.toLowerCase()}`;
+                
+                button.style.display = 'none';
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error analyzing sentiment. Please try again.');
+                button.disabled = false;
+                button.textContent = 'Analyze Sentiment';
+            }
+        }
+
+        async function fetchNews() {
+            try {
+                const container = document.getElementById('news-container');
+                container.innerHTML = '<div id="loading">Loading news...</div>';
+                
+                const response = await fetch('/api/news');
+                const data = await response.json();
+                
+                container.innerHTML = '';
+                
+                if (!data.articles || data.articles.length === 0) {
+                    container.innerHTML = '<div class="error-message">No news articles found.</div>';
+                    return;
+                }
+                
+                data.articles.forEach(article => {
+                    const articleDiv = document.createElement('div');
+                    articleDiv.className = 'article';
+                    
+                    const text = `${article.title} ${article.description || ''}`;
+                    
+                    articleDiv.innerHTML = `
+                        <div class="article-image">
+                            <img src="${article.urlToImage || '/static/placeholder.jpg'}" 
+                                 alt="${article.title}"
+                                 onerror="this.src='/static/placeholder.jpg'">
+                        </div>
+                        <div class="article-content">
+                            <h2>${article.title}</h2>
+                            <p>${article.description}</p>
+                            <a href="${article.url}" target="_blank">Read more →</a>
+                            <small>Published: ${new Date(article.publishedAt).toLocaleString()}</small>
+                            <div>
+                                <button class="analyze-button" 
+                                        onclick="analyzeArticle(this, '${text.replace(/'/g, "\\'")}')">
+                                    Analyze Sentiment
+                                </button>
+                                <span class="sentiment-result"></span>
+                            </div>
+                        </div>
+                    `;
+                    
+                    container.appendChild(articleDiv);
+                });
+            } catch (error) {
+                console.error('Error:', error);
+                document.getElementById('news-container').innerHTML = 
+                    '<div class="error-message">Error loading news. Please try again later.</div>';
+            }
+        }
+
+        // Fetch news when page loads
+        fetchNews();
+    </script>
+</body>
+</html>
