@@ -1,0 +1,10 @@
+Flask
+requests
+tensorflow
+numpy
+pandas
+scikit-learn
+keras
+nltk
+gunicorn
+Werkzeug
