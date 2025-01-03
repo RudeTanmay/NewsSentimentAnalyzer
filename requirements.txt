@@ -8,3 +8,4 @@ keras
 Werkzeug
 nltk
 pickle-mixin
+gunicorn
